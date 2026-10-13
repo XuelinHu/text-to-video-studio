@@ -34,9 +34,11 @@ npm start
 
 ## 桌面安装包
 
-创建并推送版本标签，例如 `v0.2.0`，GitHub Actions 会自动构建 Windows 安装程序，以及适用于 Apple Silicon 和 Intel 的 macOS DMG/ZIP，并将它们附加到 GitHub Release。macOS 安装包暂未签名；配置 Apple Developer 证书和公证凭据后，才能提供已签名并公证的安装包。
+创建并推送版本标签，例如 `v0.2.1`，GitHub Actions 会自动构建 Windows 安装程序、Android APK，以及适用于 Apple Silicon 和 Intel 的 macOS DMG/ZIP，并将它们附加到 GitHub Release。macOS 安装包暂未签名；配置 Apple Developer 证书和公证凭据后，才能提供已签名并公证的安装包。
 
 桌面安装包内置 FFmpeg，可直接导出 MP4。微软 Edge 在线语音仍需要联网。FFmpeg 按其自身许可证分发，详见 [第三方组件说明](THIRD_PARTY_NOTICES.md)。
+
+覆盖安装新版前，请先退出白板视频工作室。如果安装器提示无法关闭应用，请取消提示、关闭工作室窗口，并在任务管理器中结束残留的 `Whiteboard Video Studio.exe` 进程，再重新运行安装程序。项目文件和设置保存在安装目录之外，不会因覆盖安装而删除。
 
 ## Android 版本
 

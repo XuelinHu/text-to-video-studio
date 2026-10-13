@@ -43,9 +43,11 @@ Browser preview: `http://127.0.0.1:5173/`. Full AI, speech, image selection, and
 
 ## Desktop Installers
 
-Create a version tag such as `v0.2.0` and push it to GitHub. The release workflow builds a Windows NSIS installer and macOS DMG/ZIP packages for Apple Silicon and Intel, then attaches them to a GitHub Release. The macOS package is unsigned until Apple Developer signing and notarization credentials are configured.
+Create a version tag such as `v0.2.1` and push it to GitHub. The release workflow builds a Windows NSIS installer, Android APK, and macOS DMG/ZIP packages for Apple Silicon and Intel, then attaches them to a GitHub Release. The macOS package is unsigned until Apple Developer signing and notarization credentials are configured.
 
 The packaged desktop app includes FFmpeg for MP4 export. The Microsoft Edge online voice service still requires an internet connection. FFmpeg is distributed under its own license; see [Third-Party Notices](THIRD_PARTY_NOTICES.md).
+
+When installing an update, exit Whiteboard Video Studio first. If setup says it cannot close the app, cancel the prompt, close the app window, and end any remaining `Whiteboard Video Studio.exe` process in Task Manager before running setup again. Project files and settings are stored separately from the installation directory.
 
 ## Android APK
 

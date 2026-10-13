@@ -1,6 +1,6 @@
 {
   "name": "text-to-video-studio",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
@@ -44,7 +44,7 @@
     "productName": "Whiteboard Video Studio",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "extraMetadata": {
-      "version": "0.2.0"
+      "version": "0.2.1"
     },
     "directories": {
       "output": "release"
