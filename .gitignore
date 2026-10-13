@@ -1,0 +1,16 @@
+node_modules/
+dist/
+output/
+tmp/
+coverage/
+.vite/
+.env
+.env.*
+!.env.example
+*.log
+*.mp4
+*.webm
+*.wav
+*.pem
+*.key
+settings.json
