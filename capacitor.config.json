@@ -1,0 +1,8 @@
+{
+  "appId": "com.xuelinhu.whiteboardvideostudio",
+  "appName": "白板视频工作室",
+  "webDir": "dist",
+  "android": {
+    "loggingBehavior": "none"
+  }
+}

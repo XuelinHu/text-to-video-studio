@@ -61,6 +61,9 @@ jobs:
           curl --fail --location "$url" --output ffmpeg.gz
           gunzip -c ffmpeg.gz > node_modules/ffmpeg-static/${{ matrix.ffmpeg }}
           rm ffmpeg.gz
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            chmod +x node_modules/ffmpeg-static/${{ matrix.ffmpeg }}
+          fi
           metadata="${{ matrix.ffmpeg_metadata }}"
           curl --fail --location "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/${metadata}.LICENSE.gz" --output ffmpeg-license.gz
           gunzip -c ffmpeg-license.gz > node_modules/ffmpeg-static/${metadata}.LICENSE
@@ -75,9 +78,43 @@ jobs:
           name: whiteboard-video-studio-${{ matrix.platform }}
           path: release/*
 
+  android:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform
+        shell: pwsh
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install dependencies and build APK
+        run: npm ci && npm run build:android
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: whiteboard-video-studio-android
+          path: release/Whiteboard-Video-Studio-Android.apk
+
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, android]
     runs-on: ubuntu-latest
     steps:
       - name: Download installers

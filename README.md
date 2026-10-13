@@ -2,7 +2,8 @@
 
 <p align="center">
   <img height="20" alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=20232A" />
-  <img height="20" alt="Electron 35" src="https://img.shields.io/badge/Electron-35-47848F?logo=electron&logoColor=white" />
+<img height="20" alt="Electron 35" src="https://img.shields.io/badge/Electron-35-47848F?logo=electron&logoColor=white" />
+  <img height="20" alt="Capacitor 8" src="https://img.shields.io/badge/Capacitor-8-119EFF?logo=capacitor&logoColor=white" />
   <img height="20" alt="Vite 7" src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white" />
   <img height="20" alt="Node.js runtime" src="https://img.shields.io/badge/Node.js-runtime-339933?logo=nodedotjs&logoColor=white" />
 </p>
@@ -27,10 +28,11 @@ A desktop studio for creating knowledge videos with black text on a white backgr
 - Choose whether to include audio and select the video resolution before export. Captions remain synchronized with narration during export.
 - Save the current script, template, segments, and generated audio when starting a new project. Project folders use the date, time, and first sentence as their name.
 - Browse projects, JSON descriptions, templates, and exported videos in the management view.
+- Install the Android APK. Punctuation splitting and MP4 conversion work on-device; Microsoft Edge speech and AI splitting need network access.
 
 ## Getting Started
 
-Requires Node.js, npm, and FFmpeg for MP4 transcoding.
+Requires Node.js and npm for desktop development. Android APK builds also require an Android SDK and JDK 21. Desktop MP4 transcoding uses FFmpeg.
 
 ```powershell
 npm install
@@ -44,6 +46,16 @@ Browser preview: `http://127.0.0.1:5173/`. Full AI, speech, image selection, and
 Create a version tag such as `v0.2.0` and push it to GitHub. The release workflow builds a Windows NSIS installer and macOS DMG/ZIP packages for Apple Silicon and Intel, then attaches them to a GitHub Release. The macOS package is unsigned until Apple Developer signing and notarization credentials are configured.
 
 The packaged desktop app includes FFmpeg for MP4 export. The Microsoft Edge online voice service still requires an internet connection. FFmpeg is distributed under its own license; see [Third-Party Notices](THIRD_PARTY_NOTICES.md).
+
+## Android APK
+
+Build a directly installable, debug-signed APK on Windows with:
+
+```powershell
+npm run build:android
+```
+
+The APK is written to `release/Whiteboard-Video-Studio-Android.apk`. It uses the Android media library and saves MP4 files under `Movies/白板视频工作室`. The release workflow also attaches the APK to GitHub Releases. This debug-signed APK is suitable for sideloading; Google Play distribution requires a separately managed release signing key.
 
 ## Usage
 
@@ -71,4 +83,4 @@ The Electron smoke test exercises the desktop workflow, generates speech, export
 
 ## Tech Stack
 
-React 19 · Electron 35 · Vite 7 · Node.js · Microsoft Edge TTS
+React 19 · Electron 35 · Capacitor 8 · Vite 7 · Node.js · Microsoft Edge TTS

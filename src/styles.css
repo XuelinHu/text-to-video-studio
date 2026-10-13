@@ -142,3 +142,35 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .speech-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 @media (max-width: 720px) { .speech-lists { grid-template-columns: 1fr; } .speech-dialog-actions { flex-wrap: wrap; } }
 @media (max-width: 1180px) { .workspace { grid-template-columns: 270px minmax(400px, 1fr) 290px; gap: 10px; padding: 10px; } .left-panel, .right-panel { padding: 13px; } }
+@media (max-width: 720px) {
+  body { min-width: 320px; }
+  .topbar { height: auto; min-height: 58px; flex-wrap: wrap; gap: 8px; padding: 9px 11px; }
+  .brand-mark { width: 30px; height: 30px; }
+  .brand-copy { margin-right: auto; }
+  .management-nav { margin-left: 0; }
+  .topbar-spacer { display: none; }
+  .status-text { order: 8; flex-basis: 100%; max-width: 100%; margin: 0; }
+  .topbar > .button { min-height: 34px; padding: 0 9px; font-size: 11px; }
+  .export-audio-option, .export-resolution-option { font-size: 10px; }
+  .workspace { grid-template-columns: minmax(0, 1fr); gap: 9px; padding: 8px; }
+  .left-panel, .right-panel { min-height: 0; max-height: none; padding: 12px; }
+  .preview-column { order: 2; padding: 10px; }
+  .right-panel { order: 3; height: min(66vh, 620px); }
+  .left-panel > .button-wide { margin-top: 12px; }
+  .script-input { min-height: 170px; }
+  .image-gallery { gap: 4px; }
+  .image-preset { font-size: 9px; }
+  .settings-page, .manager-page { margin: 20px auto; padding: 0 12px 24px; }
+  .settings-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 17px; }
+  .settings-section { padding: 14px; }
+  .settings-footer, .workspace-path { align-items: stretch; flex-direction: column; }
+  .project-row { grid-template-columns: 42px minmax(0, 1fr); gap: 9px; }
+  .project-thumb { width: 40px; height: 38px; }
+  .project-row > .button { grid-column: 2; justify-self: start; }
+  .library-heading { margin-top: 20px; }
+  .speech-dialog-backdrop { padding: 10px; }
+  .speech-dialog { max-height: 90dvh; padding: 15px; }
+  .speech-lists { min-height: 0; overflow: auto; }
+  .speech-lists > div { min-height: 80px; }
+  .speech-dialog-actions .button { flex: 1 1 auto; }
+}

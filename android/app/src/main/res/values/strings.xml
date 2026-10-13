@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">白板视频工作室</string>
+    <string name="title_activity_main">白板视频工作室</string>
+    <string name="package_name">com.xuelinhu.whiteboardvideostudio</string>
+    <string name="custom_url_scheme">com.xuelinhu.whiteboardvideostudio</string>
+</resources>

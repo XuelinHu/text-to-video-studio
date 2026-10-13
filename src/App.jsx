@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import bambooImage from '../assets/presets/bamboo-slips.png?inline';
 import openBookImage from '../assets/presets/open-book.png?inline';
 import bookCoverImage from '../assets/presets/book-cover.png?inline';
@@ -72,6 +73,45 @@ const defaults = {
 };
 
 const desktop = window.studio;
+const androidNative = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android'
+  ? registerPlugin('StudioNative')
+  : null;
+const mobileDraftsKey = 'whiteboard-video-drafts';
+
+async function splitWithAi({ settings, script }) {
+  const response = await fetch(`${String(settings.aiBaseUrl || '').replace(/\/$/u, '')}/chat/completions`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${settings.apiKey || ''}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: settings.aiModel || 'gpt-4o-mini',
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: '你是短视频旁白编辑。将用户文稿拆分成适合逐句朗读和逐屏显示的中文题词。保留原意、句子完整性和顺序，不添加事实；不要按固定字数截断。仅在自然停顿处分段。仅输出 JSON 对象：{"segments":["句子1"]}。' },
+        { role: 'user', content: script },
+      ],
+    }),
+  });
+  if (!response.ok) throw new Error(`AI 拆分请求失败 (${response.status})`);
+  const payload = await response.json();
+  const parsed = JSON.parse(payload.choices?.[0]?.message?.content || '{}');
+  if (!Array.isArray(parsed.segments) || !parsed.segments.length) throw new Error('AI 没有返回有效的句子列表。');
+  return parsed.segments.map((text) => ({ text: String(text).trim(), audio: null, duration: 0 })).filter((item) => item.text);
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('读取图片失败。'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function safeProjectName(value) {
+  return String(value || '未命名项目').replace(/[<>:"/\\|?*\x00-\x1f]/gu, '').trim().slice(0, 80) || '未命名项目';
+}
+
 const bridge = desktop || {
   loadSettings: async () => {
     try { return JSON.parse(localStorage.getItem('whiteboard-video-settings') || '{}'); }
@@ -79,21 +119,74 @@ const bridge = desktop || {
   },
   saveSettings: async (settings) => {
     const { apiKey, ...safeSettings } = settings;
+    safeSettings.aiProfiles = (safeSettings.aiProfiles || []).map(({ apiKey: _apiKey, ...profile }) => profile);
     localStorage.setItem('whiteboard-video-settings', JSON.stringify(safeSettings));
   },
-  splitScript: async () => { throw new Error('AI 拆句请在 Electron 桌面版中使用。'); },
-  generateSpeech: async () => { throw new Error('语音生成请在 Electron 桌面版中使用。'); },
-  chooseImage: async () => { throw new Error('图片选择请在 Electron 桌面版中使用。'); },
-  exportVideo: async () => { throw new Error('视频导出请在 Electron 桌面版中使用。'); },
+  splitScript: splitWithAi,
+  generateSpeech: async ({ settings, text }) => {
+    if (settings.ttsMode === 'edge-tts' && androidNative) {
+      return androidNative.generateSpeech({ text, voice: settings.ttsVoice, rate: Math.round((Number(settings.ttsRate || 1.1) - 1) * 100) });
+    }
+    if (settings.ttsMode === 'openai-compatible') {
+      if (!settings.apiKey) throw new Error('请先填写 TTS API 密钥。');
+      const response = await fetch(`${String(settings.ttsBaseUrl || settings.aiBaseUrl || '').replace(/\/$/u, '')}/audio/speech`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${settings.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: settings.ttsModel || 'gpt-4o-mini-tts', voice: settings.ttsVoice || 'alloy', speed: Number(settings.ttsRate || 1.1), input: text, response_format: 'mp3' }),
+      });
+      if (!response.ok) throw new Error(`语音生成失败 (${response.status})`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      let binary = '';
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+      return { data: btoa(binary), mimeType: 'audio/mpeg' };
+    }
+    throw new Error('Android 版仅支持微软在线语音或 OpenAI 兼容语音。');
+  },
+  chooseImage: async () => new Promise((resolve) => {
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = 'image/png,image/jpeg,image/webp';
+    picker.onchange = async () => {
+      const file = picker.files?.[0];
+      if (!file) return resolve(null);
+      try { resolve({ name: file.name, dataUrl: await fileToDataUrl(file) }); }
+      catch { resolve(null); }
+    };
+    picker.click();
+  }),
+  exportVideo: async ({ bytes, settings, project }) => {
+    if (!androidNative) throw new Error('浏览器预览不能导出 MP4，请安装 Android APK 或使用桌面版。');
+    let binary = '';
+    const view = new Uint8Array(bytes);
+    for (let offset = 0; offset < view.length; offset += 0x8000) binary += String.fromCharCode(...view.subarray(offset, offset + 0x8000));
+    const result = await androidNative.exportVideo({
+      webmBase64: btoa(binary),
+      fileName: safeProjectName(project?.script?.trim().split(/(?<=[。！？!?])/u, 1)[0] || project?.script),
+      resolution: settings.exportResolution,
+      includeAudio: project?.includeAudio !== false,
+      duration: project?.duration || 0,
+    });
+    const drafts = JSON.parse(localStorage.getItem(mobileDraftsKey) || '[]');
+    drafts.unshift({ folder: result.filePath, uri: result.uri, title: project?.script?.trim().split(/(?<=[。！？!?])/u, 1)[0] || '知识短视频', script: project?.script || '', segments: project?.segments || [], createdAt: new Date().toISOString(), hasVideo: true, mp4: result.filePath });
+    localStorage.setItem(mobileDraftsKey, JSON.stringify(drafts.slice(0, 100)));
+    return { canceled: false, filePath: result.filePath, uri: result.uri };
+  },
   saveDraft: async ({ settings, project }) => {
-    const drafts = JSON.parse(localStorage.getItem('whiteboard-video-drafts') || '[]');
-    const folder = `${new Date().toLocaleString()}_${project.script.slice(0, 24)}`.replace(/[<>:"/\\|?*\x00-\x1f]/g, '');
-    localStorage.setItem('whiteboard-video-drafts', JSON.stringify([{ folder, script: project.script, segments: project.segments.map(({ audio, ...segment }) => segment), settings: { headerLeft: settings.headerLeft, headerRight: settings.headerRight, author: settings.author } }, ...drafts]));
+    const drafts = JSON.parse(localStorage.getItem(mobileDraftsKey) || '[]');
+    const stamp = new Date().toISOString().replace(/[-:T.Z]/gu, '').slice(0, 14);
+    const folder = `${stamp}_${safeProjectName(project.script.trim().split(/(?<=[。！？!?])/u, 1)[0] || project.script.slice(0, 30))}`;
+    localStorage.setItem(mobileDraftsKey, JSON.stringify([{ folder, title: project.title || folder, script: project.script, segments: project.segments.map(({ audio, ...segment }) => segment), settings: { ...settings, apiKey: undefined, aiProfiles: (settings.aiProfiles || []).map(({ apiKey, ...profile }) => profile) }, createdAt: new Date().toISOString(), hasVideo: false }, ...drafts].slice(0, 100)));
     return { folder };
   },
   chooseWorkspace: async () => null,
-  listProjects: async () => ({ projects: [], total: 0, page: 1, pageSize: 8 }),
-  openProjectFile: async () => {},
+  listProjects: async ({ page = 1, pageSize = 8 } = {}) => {
+    const projects = JSON.parse(localStorage.getItem(mobileDraftsKey) || '[]');
+    return { projects: projects.slice((page - 1) * pageSize, page * pageSize), total: projects.length, page, pageSize };
+  },
+  openProjectFile: async ({ uri }) => {
+    if (!uri || !androidNative) return;
+    await androidNative.openVideo({ uri });
+  },
 };
 
 const toBlob = (audio) => {
@@ -286,15 +379,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!desktop || !showManager) return;
+    if ((!desktop && !androidNative) || !showManager) return;
     bridge.listProjects({ directory: settings.workspaceDirectory, page: projectPage, pageSize: 8 }).then(setProjectData).catch((error) => setMessage(error.message));
   }, [showManager, projectPage, settings.workspaceDirectory]);
 
   useEffect(() => {
-    if (!desktop) return undefined;
-    const onProgress = (event) => setExportProgress(Math.round(event.detail.percent || 0));
-    window.addEventListener('studio-video-progress', onProgress);
-    return () => window.removeEventListener('studio-video-progress', onProgress);
+    const onDesktopProgress = (event) => setExportProgress(Math.round(event.detail.percent || 0));
+    window.addEventListener('studio-video-progress', onDesktopProgress);
+    let nativeListener;
+    if (androidNative) {
+      androidNative.addListener('exportProgress', (event) => setExportProgress(70 + Math.round((event.percent || 0) * 0.3)))
+        .then((listener) => { nativeListener = listener; });
+    }
+    return () => {
+      window.removeEventListener('studio-video-progress', onDesktopProgress);
+      nativeListener?.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -484,7 +584,7 @@ export default function App() {
       setShowManager(false);
       setShowSettings(false);
       setMessage(`当前项目已保存：${result.folder}，已新建空白项目`);
-      if (desktop) setProjectData(await bridge.listProjects({ directory: settings.workspaceDirectory, page: 1, pageSize: 8 }));
+      if (desktop || androidNative) setProjectData(await bridge.listProjects({ directory: settings.workspaceDirectory, page: 1, pageSize: 8 }));
     } catch (error) {
       setMessage(`保存当前项目失败：${error.message}`);
     } finally { setBusy(''); }
@@ -533,6 +633,11 @@ export default function App() {
     if (!segments.length) return setMessage('请先添加题词段落。');
     if (settings.includeAudio && segments.some((segment) => !segment.audio)) return setMessage('请先生成全部语音，或取消“包含声音”后导出无声视频。');
     if (!canvasRef.current) return;
+    const recorderTypes = settings.includeAudio
+      ? ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp9,opus', 'video/webm']
+      : ['video/webm;codecs=vp8', 'video/webm;codecs=vp9', 'video/webm'];
+    const recorderType = recorderTypes.find((type) => MediaRecorder.isTypeSupported(type));
+    if (!recorderType) return setMessage('当前设备不支持 WebM 视频录制。');
     stopSegmentPreview();
     setBusy('export');
     setExportProgress(0);
@@ -542,7 +647,7 @@ export default function App() {
     if (audioContext?.state === 'suspended') await audioContext.resume();
     const canvasStream = canvasRef.current.captureStream(30);
     const stream = new MediaStream([...canvasStream.getVideoTracks(), ...(audioOutput?.stream.getAudioTracks() || [])]);
-    const recorder = new MediaRecorder(stream, { mimeType: settings.includeAudio ? 'video/webm;codecs=vp9,opus' : 'video/webm;codecs=vp9' });
+    const recorder = new MediaRecorder(stream, { mimeType: recorderType });
     const segmentDurations = [];
     let frameTimer = null;
     let frameSegment = segments[activeIndex];
@@ -584,7 +689,7 @@ export default function App() {
       frameTimer = null;
       recorder.stop();
       const blob = await completed;
-      setMessage('正在转换 MP4…');
+      setMessage(androidNative ? '正在将视频转换为 MP4…' : '正在转换 MP4…');
       const totalDuration = segmentDurations.reduce((sum, duration) => sum + (duration || 0), 0);
       if (settings.includeAudio) setSegments((current) => current.map((segment, index) => ({ ...segment, duration: segmentDurations[index] || segment.duration })));
       const result = await bridge.exportVideo({
@@ -636,7 +741,7 @@ export default function App() {
         <button className="button button-quiet management-nav" onClick={() => { setShowManager(true); setShowSettings(false); setProjectPage(1); }}>管理台</button>
         <button className="button button-quiet new-project-nav" disabled={Boolean(busy)} onClick={createNewProject}>＋ 新建</button>
         <div className="topbar-spacer" />
-        <span className="status-text" aria-live="polite">{message || (!desktop ? '浏览器预览 · 桌面端启用完整功能' : loaded ? '本地草稿' : '正在载入…')}</span>
+        <span className="status-text" aria-live="polite">{message || (!desktop && !androidNative ? '浏览器预览' : loaded ? '本地草稿' : '正在载入…')}</span>
         {showManager ? <button className="button button-quiet" onClick={() => setShowManager(false)}>返回工作台</button> : <button className="button button-quiet" onClick={() => setShowSettings((value) => !value)}>{showSettings ? '返回工作区' : 'AI / 语音设置'}</button>}
         <label className="export-audio-option"><input type="checkbox" checked={settings.includeAudio !== false} onChange={(event) => updateSetting('includeAudio', event.target.checked)} />包含声音</label>
         <label className="export-resolution-option"><span>分辨率</span><select value={settings.exportResolution || '1280x720'} onChange={(event) => updateSetting('exportResolution', event.target.value)}><option value="854x480">480p</option><option value="1280x720">720p</option><option value="1920x1080">1080p</option></select></label>
@@ -669,7 +774,7 @@ export default function App() {
             {projectData.projects.map((project) => <article className="project-row" key={`${project.folder}-${project.createdAt}`}>
               <div className="project-thumb">{project.hasVideo ? 'MP4' : 'JSON'}</div>
               <div className="project-info"><strong>{project.title || project.folder}</strong><span>{new Date(project.createdAt).toLocaleString()} · {project.segments?.length || 0} 段 · {project.settings?.ttsVoice || '未记录音色'}</span><p>{String(project.script || '').slice(0, 100)}{String(project.script || '').length > 100 ? '…' : ''}</p></div>
-              <button className="button button-quiet" disabled={!project.hasVideo} onClick={() => bridge.openProjectFile({ directory: settings.workspaceDirectory, folder: project.folder, file: project.mp4 })}>打开视频</button>
+              <button className="button button-quiet" disabled={!project.hasVideo} onClick={() => bridge.openProjectFile({ directory: settings.workspaceDirectory, folder: project.folder, file: project.mp4, uri: project.uri })}>打开视频</button>
               <button className="button button-quiet" onClick={() => bridge.openProjectFile({ directory: settings.workspaceDirectory, folder: project.folder, file: 'project.json' })}>项目 JSON</button>
             </article>)}
             {!projectData.projects.length && <div className="empty-library">工作目录中还没有项目。新建或导出后会自动归档到这里。</div>}

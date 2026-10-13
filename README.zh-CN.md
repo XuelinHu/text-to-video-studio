@@ -40,7 +40,15 @@ npm start
 
 ## Android 版本
 
-当前项目是 Electron 桌面应用，还没有可直接安装的 APK。标点拆分本身可以在本机离线运行；微软 Edge 在线语音需要联网，完全断网时不能生成云端语音。若要将完整工作流迁移到 Android，还需单独接入 Android 文件管理、应用内视频编码、权限与 APK 签名。Windows/macOS 发布工作流可运行后，再建立独立 Android 构建并验证这些功能。
+项目提供可直接侧载安装的 Android APK。标点拆分、编辑和 MP4 转换在设备本机运行；微软 Edge 在线语音和 AI 文稿拆分需要联网。MP4 默认保存到系统相册目录 `Movies/白板视频工作室`。
+
+在 Windows 开发机上运行以下命令构建：
+
+```powershell
+npm run build:android
+```
+
+APK 输出到 `release/Whiteboard-Video-Studio-Android.apk`。该安装包使用 Android 调试签名，适合直接安装测试；发布到 Google Play 需要单独配置正式签名密钥。GitHub Release 工作流也会自动附上 APK。
 
 ## 使用流程
 
