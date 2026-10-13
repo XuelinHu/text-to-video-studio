@@ -387,6 +387,18 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+  window.webContents.on('did-fail-load', (_event, code, description, url) => {
+    console.error(`Window failed to load (${code}): ${description} (${url})`);
+    if (app.isPackaged) {
+      dialog.showErrorBox('白板视频工作室启动失败', `界面加载失败：${description}\n${url}`);
+    }
+  });
+  window.webContents.on('render-process-gone', (_event, details) => {
+    console.error('Renderer process exited:', details);
+    if (app.isPackaged) {
+      dialog.showErrorBox('白板视频工作室异常退出', `界面进程已退出：${details.reason}`);
+    }
+  });
   if (!app.isPackaged) window.loadURL('http://127.0.0.1:5173');
   else window.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
 }
