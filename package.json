@@ -9,6 +9,11 @@
     "start": "concurrently -k \"npm:dev\" \"wait-on tcp:5173 && electron .\"",
     "build": "vite build",
     "check": "vite build",
+    "build:win": "npm run build && electron-builder --win nsis --x64",
+    "build:mac": "npm run build && electron-builder --mac dmg zip",
+    "build:mac:x64": "npm run build && electron-builder --mac dmg zip --x64",
+    "build:mac:arm64": "npm run build && electron-builder --mac dmg zip --arm64",
+    "icons:generate": "node scripts/generate-app-icons.mjs",
     "smoke": "node scripts/smoke-electron.mjs",
     "smoke:ffmpeg": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-video.ps1",
     "voices:edge-samples": "node scripts/generate-edge-voice-samples.mjs"
@@ -16,11 +21,68 @@
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
     "concurrently": "^9.2.0",
-    "electron": "^35.0.0",
     "node-edge-tts": "^1.2.11",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "vite": "^7.0.0",
     "wait-on": "^8.0.0"
+  },
+  "devDependencies": {
+    "electron": "35.7.5",
+    "electron-builder": "^26.15.3",
+    "ffmpeg-static": "^5.3.0",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.34.5"
+  },
+  "build": {
+    "appId": "com.xuelinhu.whiteboardvideostudio",
+    "productName": "Whiteboard Video Studio",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "extraMetadata": {
+      "version": "0.2.0"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/icon.ico"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/ffmpeg-static",
+        "to": "ffmpeg-static",
+        "filter": ["ffmpeg.exe", "ffmpeg", "*.LICENSE"]
+      }
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "icon": "assets/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.education"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "XuelinHu",
+        "repo": "text-to-video-studio",
+        "releaseType": "release"
+      }
+    ]
   }
 }

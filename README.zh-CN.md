@@ -32,6 +32,16 @@ npm start
 
 浏览器预览地址：`http://127.0.0.1:5173/`。AI、语音、图片选择和视频导出等完整功能需要 Electron 桌面端。
 
+## 桌面安装包
+
+创建并推送版本标签，例如 `v0.2.0`，GitHub Actions 会自动构建 Windows 安装程序，以及适用于 Apple Silicon 和 Intel 的 macOS DMG/ZIP，并将它们附加到 GitHub Release。macOS 安装包暂未签名；配置 Apple Developer 证书和公证凭据后，才能提供已签名并公证的安装包。
+
+桌面安装包内置 FFmpeg，可直接导出 MP4。微软 Edge 在线语音仍需要联网。FFmpeg 按其自身许可证分发，详见 [第三方组件说明](THIRD_PARTY_NOTICES.md)。
+
+## Android 版本
+
+当前项目是 Electron 桌面应用，还没有可直接安装的 APK。标点拆分本身可以在本机离线运行；微软 Edge 在线语音需要联网，完全断网时不能生成云端语音。若要将完整工作流迁移到 Android，还需单独接入 Android 文件管理、应用内视频编码、权限与 APK 签名。Windows/macOS 发布工作流可运行后，再建立独立 Android 构建并验证这些功能。
+
 ## 使用流程
 
 1. 设置顶部文案、作者署名与中心图片。

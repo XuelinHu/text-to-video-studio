@@ -1,6 +1,8 @@
 node_modules/
 dist/
 output/
+release/
+assets/icon.iconset/
 tmp/
 coverage/
 .vite/
