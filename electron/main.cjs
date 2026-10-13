@@ -332,8 +332,7 @@ ipcMain.handle('video:export', async (event, { bytes, settings, project }) => {
 
   const tempPath = path.join(app.getPath('temp'), `video-studio-${Date.now()}.webm`);
   await fs.writeFile(tempPath, Buffer.from(bytes));
-  const packagedFfmpeg = path.join(process.resourcesPath, 'ffmpeg-static', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
-  const bundledFfmpeg = app.isPackaged ? packagedFfmpeg : require('ffmpeg-static');
+  const bundledFfmpeg = path.join(process.resourcesPath, 'ffmpeg-static', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
   const ffmpeg = process.env.FFMPEG_PATH || (app.isPackaged ? bundledFfmpeg : 'ffmpeg');
   const dimensions = { '854x480': [854, 480], '1280x720': [1280, 720], '1920x1080': [1920, 1080] }[project?.resolution] || [1280, 720];
   const ffmpegArgs = ['-y', '-i', tempPath, '-progress', 'pipe:1', '-nostats', '-vf', `scale=${dimensions[0]}:${dimensions[1]}:flags=lanczos`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p'];
