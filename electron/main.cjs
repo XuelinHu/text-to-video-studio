@@ -317,6 +317,11 @@ ipcMain.handle('image:choose', async () => {
 });
 
 ipcMain.handle('video:export', async (event, { bytes, settings, project }) => {
+  const bundledFfmpeg = path.join(process.resourcesPath, 'ffmpeg-static', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+  const ffmpeg = process.env.FFMPEG_PATH || (app.isPackaged ? bundledFfmpeg : 'ffmpeg');
+  if (app.isPackaged && !process.env.FFMPEG_PATH && !(await fs.stat(ffmpeg).catch(() => null))) {
+    throw new Error('安装包缺少 FFmpeg，无法导出视频。请从 GitHub Releases 下载完整安装包并重新安装。');
+  }
   const root = workspacePath(settings || {});
   const projectTitle = projectName(project?.script);
   const { folderPath: projectPath } = await createProjectFolder(root, projectTitle);
@@ -332,8 +337,6 @@ ipcMain.handle('video:export', async (event, { bytes, settings, project }) => {
 
   const tempPath = path.join(app.getPath('temp'), `video-studio-${Date.now()}.webm`);
   await fs.writeFile(tempPath, Buffer.from(bytes));
-  const bundledFfmpeg = path.join(process.resourcesPath, 'ffmpeg-static', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
-  const ffmpeg = process.env.FFMPEG_PATH || (app.isPackaged ? bundledFfmpeg : 'ffmpeg');
   const dimensions = { '854x480': [854, 480], '1280x720': [1280, 720], '1920x1080': [1920, 1080] }[project?.resolution] || [1280, 720];
   const ffmpegArgs = ['-y', '-i', tempPath, '-progress', 'pipe:1', '-nostats', '-vf', `scale=${dimensions[0]}:${dimensions[1]}:flags=lanczos`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p'];
   if (project?.includeAudio !== false) ffmpegArgs.push('-c:a', 'aac');
