@@ -106,7 +106,16 @@ jobs:
           chmod +x android/gradlew
 
       - name: Install dependencies and build APK
-        run: npm ci && npm run build:android
+        run: |
+          npm ci
+          npm run build
+          npm run icons:android
+          npx cap sync android
+          cd android
+          ./gradlew assembleDebug
+          cd ..
+          mkdir -p release
+          cp android/app/build/outputs/apk/debug/app-debug.apk release/Whiteboard-Video-Studio-Android.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
