@@ -99,11 +99,10 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
-      - name: Install Android platform
+      - name: Prepare Android SDK
         shell: bash
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
           chmod +x android/gradlew
 
       - name: Install dependencies and build APK
